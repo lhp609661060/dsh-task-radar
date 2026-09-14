@@ -1,0 +1,6 @@
+# dsh-task-radar bundle patch
+# Mounts the Task Radar plugin into a dsh profile composition.
+# Install (local dev): dsh plugin --profile web add link:/abs/path/to/dsh-task-radar
+- insert:
+    - id: task-radar
+      name: 'dsh-task-radar'

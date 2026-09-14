@@ -1,0 +1,9 @@
+# Normalize line endings; shell install scripts must keep LF on checkout.
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.md text eol=lf

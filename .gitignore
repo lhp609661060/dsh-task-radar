@@ -1,0 +1,14 @@
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+dist/
+coverage/
+*.tsbuildinfo
+
+# NOTE: lib/ (the built bundles) is intentionally committed so that git-hosted
+# installs (`dsh plugin add github:owner/repo`) work with zero build step and
+# no pnpm allowBuilds prompt. Rebuild before tagging a release:
+#   pnpm build && git add lib
