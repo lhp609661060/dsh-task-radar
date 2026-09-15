@@ -21,7 +21,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # TODO: change to the real GitHub owner/repo after publishing
-$DefaultRepo = "lhp/dsh-task-radar"
+$DefaultRepo = "lhp609661060/dsh-task-radar"
 $ProfileName = if ($env:PROFILE) { $env:PROFILE } else { "web" }
 
 $Repo = $RepoArg

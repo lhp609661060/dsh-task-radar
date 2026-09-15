@@ -24,13 +24,13 @@
   ],
   "license": "MIT",
   "author": "lhp",
-  "homepage": "https://github.com/<your-name>/dsh-task-radar#readme",
+  "homepage": "https://github.com/lhp609661060/dsh-task-radar#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/<your-name>/dsh-task-radar.git"
+    "url": "git+https://github.com/lhp609661060/dsh-task-radar.git"
   },
   "bugs": {
-    "url": "https://github.com/<your-name>/dsh-task-radar/issues"
+    "url": "https://github.com/lhp609661060/dsh-task-radar/issues"
   },
   "keywords": [
     "dsh",

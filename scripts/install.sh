@@ -24,7 +24,7 @@
 set -euo pipefail
 
 # TODO: 仓库发布后把这里改成实际的 GitHub owner/repo
-DEFAULT_REPO="lhp/dsh-task-radar"
+DEFAULT_REPO="lhp609661060/dsh-task-radar"
 PROFILE="${PROFILE:-web}"
 
 resolve_repo() {
