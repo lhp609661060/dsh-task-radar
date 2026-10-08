@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform: DSH web](https://img.shields.io/badge/platform-DSH%20web-316fdb)](https://www.npmjs.com/package/@deepseek-ai/dsh)
-[![Requires DSH](https://img.shields.io/badge/DSH-%E2%89%A50.1.5--rc.1-2ea043)](https://www.npmjs.com/package/@deepseek-ai/dsh)
+[![Requires DSH](https://img.shields.io/badge/DSH-%E2%89%A50.2.0--rc.1-2ea043)](https://www.npmjs.com/package/@deepseek-ai/dsh)
 
 [English](./README_EN.md) · [更新日志](./CHANGELOG.md) · [问题反馈](https://github.com/lhp609661060/dsh-task-radar/issues)
 
@@ -50,18 +50,18 @@
 ### 消息栏分组
 
 - ⏳ **等待确认**：工具权限审批、`ask_user_question` 提问、计划批准
-  （数据源为主机统一的 pending-interaction）
+  （取自主机 `useSessionStatus` 的 `pendingInteraction`）
 - 🔄 **进行中**（可在设置中隐藏）
-- ✅ **处理完成**（主机 completion reminder；当前会话在后台跑完的情况由插件补记）
+- ✅ **处理完成**（`useSessionStatus.completionUnread`；当前会话在后台跑完的情况由插件补记）
 - 每条显示会话标题、所属工程目录（cwd 末级名）和相对时间
-- **点击任意一条即切换到对应会话**
+- **点击任意一条即切换到对应会话**（`uiWorkspace.openSession`）
 
 子智能体（subagent）会话不占消息位，避免多智能体团队刷屏。
 所有偏好与按钮位置仅保存在浏览器 localStorage，**不收集、不上传任何数据**。
 
 ## 📦 环境要求
 
-- [DeepSeek Harness](https://www.npmjs.com/package/@deepseek-ai/dsh) `@deepseek-ai/dsh` ≥ `0.1.5-rc.1`
+- [DeepSeek Harness](https://www.npmjs.com/package/@deepseek-ai/dsh) `@deepseek-ai/dsh` ≥ `0.2.0-rc.1`（0.2.0 版本线；本插件 v0.1.0 对应 DSH 0.1.x）
 - DSH **web 客户端**（`dsh web`）；桌面 / CLI 场景不适用
 - Node.js ≥ 20（仅从源码本地构建时需要，直接安装无需）
 
@@ -79,7 +79,7 @@ dsh plugin --profile web add github:lhp609661060/dsh-task-radar
 锁定版本可指定 tag：
 
 ```bash
-dsh plugin --profile web add github:lhp609661060/dsh-task-radar#v0.1.0
+dsh plugin --profile web add github:lhp609661060/dsh-task-radar#v0.2.0
 ```
 
 安装后重启 DSH 或直接刷新 web 页面，右下角即出现雷达按钮。
@@ -152,8 +152,8 @@ pnpm build && git add lib && git commit -m "chore: build bundles"
 | 文件 | 职责 |
 | --- | --- |
 | `src/index.ts` | Node 端空插件（纯客户端功能，仅为满足组合入口） |
-| `src/client/index.tsx` | 注册 `shell.overlay`（list / root）；注入 `slots`、`sessions`、`uiSession` |
-| `src/client/derive.ts` | 会话列表 + pending-interaction → 任务分组的纯函数推导（可单测） |
+| `src/client/index.tsx` | 注册 `shell.overlay`（list / root）；注入 `slots`、`sessions`、`uiSession`、`uiWorkspace` |
+| `src/client/derive.ts` | 会话列表 + useSessionStatus 状态快照 → 任务分组的纯函数推导（可单测） |
 | `src/client/notifier.ts` | 标题前缀 / favicon 角标 / WebAudio 提示音 / Notification |
 | `src/client/App.tsx` | 边沿检测器、可拖动比例着色雷达按钮、消息栏、toast、设置 |
 | `src/client/styles.ts` | 一次性注入的命名空间样式，颜色跟随宿主主题变量 |
@@ -161,9 +161,10 @@ pnpm build && git add lib && git commit -m "chore: build bundles"
 
 **数据来源：**
 
-- `useSessions`（`SessionListState`）：全部会话的运行 / 完成状态与工程目录
-- `useSessionPendingInteraction`：approval / question / plan-review 统一等待信号
-- `sessions.open(id)`：点击消息后切换会话
+- `useSessions`（`SessionListState`）：全部会话与工程目录
+- `useSessionStatus`（`SessionStatusSnapshot`）：每会话 `running` / `pendingInteraction`（approval / question / plan-review 统一等待信号）/ `completionUnread`
+- 当前会话 id：宿主持久化选择（localStorage `dsh.sessions.current`）
+- `uiWorkspace.openSession(id)`：点击消息后切换会话
 
 ## 📄 License
 

@@ -1,21 +1,27 @@
 /**
  * Client entry: registers the Task Radar floating panel into the host's
  * additive `shell.overlay` slot (root scope, so the component receives the
- * global `useSessions` / `useSessionPendingInteraction` standard hooks as
- * props) and wires click-to-navigate through `ctx.sessions.open`.
+ * global `useSessions` / `useSessionStatus` standard hooks as props) and
+ * wires click-to-navigate through `ctx.uiWorkspace.openSession`.
+ *
+ * DSH 0.2.0 adaptation:
+ *  - `useSessionPendingInteraction` was replaced by the unified
+ *    `useSessionStatus` standard hook;
+ *  - session navigation moved from `ctx.sessions.open` to
+ *    `ctx.uiWorkspace.openSession`.
  */
 import type { Context } from '@deepseek-ai/cordis'
-import type { PendingMap, SessionId, SessionListState, SelectorHook } from './types.ts'
+import type { SessionId, SessionListState, SessionStatusSnapshot, SelectorHook } from './types.ts'
 import { RadarOverlay, type RadarProps } from './App.tsx'
 
 /** Cordis service ids (NOT package names): slots registry, sessions list,
- * and the pending-interaction domain service. */
-export const inject = ['slots', 'sessions', 'uiSession']
+ * session status, and the workspace navigation service. */
+export const inject = ['slots', 'sessions', 'uiSession', 'uiWorkspace']
 
 export function apply(ctx: Context): () => void {
   const openSession = (id: SessionId): void => {
     try {
-      ;(ctx.sessions as { open: (id: SessionId) => void }).open(id)
+      ;(ctx.uiWorkspace as { openSession: (id: SessionId) => void }).openSession(id)
       // Bring the browser tab to the foreground when navigated from an OS
       // notification; harmless when already focused.
       if (typeof window !== 'undefined') window.focus()
@@ -43,11 +49,11 @@ export function apply(ctx: Context): () => void {
       (props: object) => {
         const p = props as {
           useSessions: SelectorHook<SessionListState>
-          useSessionPendingInteraction: SelectorHook<PendingMap>
+          useSessionStatus: SelectorHook<SessionStatusSnapshot>
         }
         const radarProps: RadarProps = {
           useSessions: p.useSessions,
-          useSessionPendingInteraction: p.useSessionPendingInteraction,
+          useSessionStatus: p.useSessionStatus,
           openSession,
         }
         return RadarOverlay(radarProps)

@@ -1,13 +1,19 @@
 /**
- * Pure derivation: sessions list + pending-interaction map → Task Radar rows.
- * No React, no DOM — unit-testable and reused by the rail, tab title and
- * notification edge detector so every surface reports one identical status.
+ * Pure derivation: sessions list + per-session status snapshot → Task Radar
+ * rows. No React, no DOM — unit-testable and reused by the rail, tab title
+ * and notification edge detector so every surface reports one identical
+ * status.
+ *
+ * DSH 0.2.0 adaptation: the old standalone pending-interaction map was
+ * unified with running/completion facts into `useSessionStatus`
+ * (`ReadonlyMap<SessionId, SessionStatus>`).
  */
 import type {
   PendingKind,
-  PendingMap,
   SessionId,
   SessionListState,
+  SessionStatus,
+  SessionStatusSnapshot,
   TaskItem,
   TaskStatus,
 } from './types.ts'
@@ -22,17 +28,15 @@ function basename(path: string): string {
 
 /**
  * Effective status of one session.
- * Precedence matches the host's own sessionStatuses(): a blocked agent
- * (waiting on the user) outranks everything, then live activity, then the
- * completion reminder, then idle.
+ * Precedence matches the host's own status merge: a blocked agent (waiting
+ * on the user) outranks everything, then live activity, then the completion
+ * reminder, then idle.
  */
-export function statusOf(
-  summary: { running: boolean; completed?: boolean },
-  pendingKind: string | undefined,
-): TaskStatus {
-  if (pendingKind !== undefined && VISIBLE_KINDS.has(pendingKind)) return 'attention'
-  if (summary.running) return 'running'
-  if (summary.completed === true) return 'done'
+export function statusOf(status: SessionStatus | undefined): TaskStatus {
+  const kind = status?.pendingInteraction?.kind
+  if (kind !== undefined && VISIBLE_KINDS.has(kind)) return 'attention'
+  if (status?.running === true) return 'running'
+  if (status?.completionUnread === true) return 'done'
   return 'idle'
 }
 
@@ -51,14 +55,16 @@ export interface RadarSummary {
  * subagent rows and idle sessions are excluded from the rail; aggregate
  * counts include only the displayed rows.
  *
- * @param extraDoneIds - client-local completion set. The host only sets
- * `summary.completed` for sessions that finished WHILE non-selected; a session
- * the user is currently running and switches away from mid-turn goes idle
- * without a host reminder, so the controller records it locally.
+ * @param currentId - the currently open session id, used only to mark rows.
+ * @param extraDoneIds - client-local completion set. When a selected session
+ * finishes while the tab is hidden, the host's `completionUnread` is not
+ * armed for the selected session; the controller remembers it locally so
+ * the badge/rail still surface it until the user returns.
  */
 export function deriveRadar(
   list: SessionListState,
-  pending: PendingMap,
+  statuses: SessionStatusSnapshot,
+  currentId: SessionId | undefined,
   extraDoneIds?: ReadonlySet<SessionId>,
 ): RadarSummary {
   const attention: TaskItem[] = []
@@ -74,16 +80,18 @@ export function deriveRadar(
     // multi-agent team does not flood the rail. Top-level sessions only.
     if (s.origin === 'subagent' || s.parentId !== undefined) continue
 
-    const interaction = pending.get(id)
+    const sessionStatus = statuses.get(id)
+    const interaction = sessionStatus?.pendingInteraction
     const waiting =
       interaction !== undefined && VISIBLE_KINDS.has(interaction.kind)
         ? (interaction.kind as PendingKind)
         : undefined
-    // Local completion marker only applies while the host has not marked the
-    // row itself and the session is no longer running / not blocked.
+
+    // Local completion marker applies when the host reports neither activity
+    // nor its own completion reminder.
     const localDone =
-      statusOf(s, waiting) === 'idle' && extraDoneIds !== undefined && extraDoneIds.has(id)
-    const status = localDone ? 'done' : statusOf(s, waiting)
+      statusOf(sessionStatus) === 'idle' && extraDoneIds !== undefined && extraDoneIds.has(id)
+    const status = localDone ? 'done' : statusOf(sessionStatus)
     if (status === 'idle') continue
 
     const item: TaskItem = {
@@ -93,7 +101,7 @@ export function deriveRadar(
       cwd: s.cwd,
       status,
       waiting,
-      current: list.current === id,
+      current: currentId === id,
       updatedAt: s.updatedAt,
     }
     items.push(item)
@@ -114,6 +122,6 @@ export function deriveRadar(
     done,
     running,
     counts: { attention: attention.length, done: done.length, running: running.length },
-    current: list.current,
+    current: currentId,
   }
 }

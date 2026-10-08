@@ -50,7 +50,11 @@ globalThis.MutationObserver = class { observe() {} disconnect() {} }
 ;(0, eval)(code)
 
 const { apply, inject } = globalThis.__radarExports
-assert.deepEqual(inject, ['slots', 'sessions', 'uiSession'], 'inject = ' + JSON.stringify(inject))
+assert.deepEqual(
+  inject,
+  ['slots', 'sessions', 'uiSession', 'uiWorkspace'],
+  'inject = ' + JSON.stringify(inject),
+)
 
 let registered
 const ctx = {
@@ -64,7 +68,8 @@ const ctx = {
       return () => {}
     },
   },
-  sessions: { open() {} },
+  sessions: {},
+  uiWorkspace: { openSession() {} },
 }
 apply(ctx)
 assert.ok(registered, 'component not registered')
@@ -74,17 +79,21 @@ assert.equal(registered.options.id, 'dsh-task-radar')
 const now = Date.now()
 const list = {
   ids: ['s1', 's2', 's3'],
-  current: 'other',
   byId: {
-    s1: { id: 's1', displayTitle: '修复订单接口', cwd: '/Users/me/ecms', running: false, completed: false, blank: false, updatedAt: now },
-    s2: { id: 's2', displayTitle: '跑数据迁移', cwd: '/Users/me/cas', running: true, completed: false, blank: false, updatedAt: now },
-    s3: { id: 's3', displayTitle: '写周报', cwd: '/Users/me/docs', running: false, completed: true, blank: false, updatedAt: now },
+    s1: { id: 's1', displayTitle: '修复订单接口', cwd: '/Users/me/ecms', running: false, blank: false, updatedAt: now },
+    s2: { id: 's2', displayTitle: '跑数据迁移', cwd: '/Users/me/cas', running: true, blank: false, updatedAt: now },
+    s3: { id: 's3', displayTitle: '写周报', cwd: '/Users/me/docs', running: false, blank: false, updatedAt: now },
   },
 }
-const pending = new Map([['s1', { kind: 'approval', sessionId: 's1' }]])
+// Unified status snapshot (DSH 0.2.0 useSessionStatus).
+const statuses = new Map([
+  ['s1', { running: false, pendingInteraction: { key: 'k1', kind: 'approval', sessionId: 's1' }, completionUnread: false }],
+  ['s2', { running: true, pendingInteraction: undefined, completionUnread: false }],
+  ['s3', { running: false, pendingInteraction: undefined, completionUnread: true }],
+])
 const props = {
   useSessions: (sel) => sel(list),
-  useSessionPendingInteraction: (sel) => sel(pending),
+  useSessionStatus: (sel) => sel(statuses),
 }
 
 const html = renderToString(React.createElement(registered.component, props))
@@ -101,8 +110,9 @@ assert.ok(html.includes('tr-fab-anchor'), 'draggable anchor wrapper')
 // Done-only → solid pale green, no pulse.
 const html2 = renderToString(
   React.createElement(registered.component, {
-    useSessions: (sel) => sel({ ids: ['s3'], current: 'other', byId: { s3: list.byId.s3 } }),
-    useSessionPendingInteraction: (sel) => sel(new Map()),
+    useSessions: (sel) => sel({ ids: ['s3'], byId: { s3: list.byId.s3 } }),
+    useSessionStatus: (sel) =>
+      sel(new Map([['s3', { running: false, pendingInteraction: undefined, completionUnread: true }]])),
   }),
 )
 assert.ok(!html2.includes('has-attention'), 'no pulse when only done')
@@ -113,8 +123,9 @@ assert.ok(!html2.includes('conic-gradient'), 'no conic when single status')
 // Running-only → solid pale blue.
 const html4 = renderToString(
   React.createElement(registered.component, {
-    useSessions: (sel) => sel({ ids: ['s2'], current: 'other', byId: { s2: list.byId.s2 } }),
-    useSessionPendingInteraction: (sel) => sel(new Map()),
+    useSessions: (sel) => sel({ ids: ['s2'], byId: { s2: list.byId.s2 } }),
+    useSessionStatus: (sel) =>
+      sel(new Map([['s2', { running: true, pendingInteraction: undefined, completionUnread: false }]])),
   }),
 )
 assert.ok(html4.includes('tr-fab-badge running'), 'running badge')
@@ -123,8 +134,13 @@ assert.ok(html4.includes('--tr-fill-running'), 'solid blue fill')
 // All idle → FAB hidden.
 const html3 = renderToString(
   React.createElement(registered.component, {
-    useSessions: (sel) => sel({ ids: ['x'], current: 'x', byId: { x: { id: 'x', displayTitle: 'idle', cwd: '/x', running: false, completed: false, blank: false, updatedAt: now } } }),
-    useSessionPendingInteraction: (sel) => sel(new Map()),
+    useSessions: (sel) =>
+      sel({
+        ids: ['x'],
+        byId: { x: { id: 'x', displayTitle: 'idle', cwd: '/x', running: false, blank: false, updatedAt: now } },
+      }),
+    useSessionStatus: (sel) =>
+      sel(new Map([['x', { running: false, pendingInteraction: undefined, completionUnread: false }]])),
   }),
 )
 assert.ok(!html3.includes('tr-fab'), 'FAB hidden when all idle')

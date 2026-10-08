@@ -1,6 +1,6 @@
 {
   "name": "dsh-task-radar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cross-project task radar for DSH web: tab badge alerts, a draggable status radar button and a click-to-switch message rail (waiting / running / done).",
   "type": "module",
   "main": "lib/index.js",

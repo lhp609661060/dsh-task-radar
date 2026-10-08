@@ -2,7 +2,7 @@
  * Task Radar root UI, mounted once in the host's `shell.overlay` slot.
  *
  * A root-scope slot component receives the framework's global standard hooks
- * as props (`useSessions`, `useSessionPendingInteraction`) — see
+ * as props (`useSessions`, `useSessionStatus`) — see
  * dsh-client-ui-session's GlobalStandardProps merge. The component:
  *  - derives one cross-workspace task view (deriveRadar),
  *  - runs the edge detector that fires OS notifications / pings / toasts when
@@ -13,10 +13,10 @@
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type {
-  PendingMap,
   SelectorHook,
-  SessionListState,
   SessionId,
+  SessionListState,
+  SessionStatusSnapshot,
   TaskItem,
   TaskStatus,
 } from './types.ts'
@@ -198,16 +198,43 @@ interface Toast {
 
 export interface RadarProps {
   useSessions: SelectorHook<SessionListState>
-  useSessionPendingInteraction: SelectorHook<PendingMap>
+  useSessionStatus: SelectorHook<SessionStatusSnapshot>
   /** Host navigation: switch the current conversation. */
   openSession: (id: SessionId) => void
 }
 
 /* --------------------------------- root ----------------------------------- */
 
-export function RadarOverlay({ useSessions, useSessionPendingInteraction, openSession }: RadarProps) {
+/** localStorage key the host persists the current session selection under. */
+const CURRENT_KEY = 'dsh.sessions.current'
+
+/** Read the currently open session id (host uiWorkspace selection snapshot). */
+function readCurrentId(): SessionId | undefined {
+  try {
+    const raw = localStorage.getItem(CURRENT_KEY)
+    if (raw === null) return undefined
+    const v = JSON.parse(raw) as { sessionId?: SessionId }
+    return typeof v.sessionId === 'string' ? v.sessionId : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function RadarOverlay({ useSessions, useSessionStatus, openSession }: RadarProps) {
   const list = useSessions((s) => s)
-  const pending = useSessionPendingInteraction((m) => m)
+  const statuses = useSessionStatus((m) => m)
+
+  // The sessions-list snapshot no longer carries `current`; track the host's
+  // persisted selection. Same-tab navigation writes localStorage directly, so
+  // a short poll keeps the marker in sync (storage events fire cross-tab only).
+  const [currentId, setCurrentId] = useState<SessionId | undefined>(() => readCurrentId())
+  useEffect(() => {
+    const t = setInterval(() => {
+      const next = readCurrentId()
+      setCurrentId((prev) => (prev === next ? prev : next))
+    }, 1000)
+    return () => clearInterval(t)
+  }, [])
 
   const [prefs, setPrefs] = useState<RadarPrefs>(() => loadPrefs())
   const [panelOpen, setPanelOpen] = useState(false)
@@ -308,10 +335,10 @@ export function RadarOverlay({ useSessions, useSessionPendingInteraction, openSe
     return () => clearInterval(t)
   }, [])
 
-  const radar = useMemo(() => deriveRadar(list, pending, localDone), [list, pending, localDone])
-
-  // Current session id for clearing local completion markers.
-  const currentId = list.current
+  const radar = useMemo(
+    () => deriveRadar(list, statuses, currentId, localDone),
+    [list, statuses, currentId, localDone],
+  )
 
   /* ---------------- external channel singletons (title/favicon) ---------- */
   const channels = useRef<{ title: TitleBadge; favicon: FaviconBadge } | undefined>(undefined)

@@ -3,9 +3,8 @@
  * NOT import from `@deepseek-ai/*` packages: a client bundle may only request
  * the handful of module-table words the runtime seeds (react family), and
  * cross-plugin value/type imports are rejected by the module table at load.
- * These shapes mirror 0.1.5-rc.1 contracts exactly (verified against
- * dsh-api-session-controller client types); they are structural, so a future
- * host with additive fields keeps working.
+ * These shapes mirror the DSH 0.2.0 client contracts structurally; additive
+ * fields in a future host keep working.
  */
 
 /** Branded session id — structurally a string. */
@@ -20,17 +19,14 @@ export interface SessionSummary {
   parentId?: SessionId
   origin?: 'subagent'
   running: boolean
-  /** Finished while not selected and not yet opened — host's completion reminder. */
-  completed?: boolean
   blank: boolean
   updatedAt: number
 }
 
-/** The sessions list snapshot. */
+/** The sessions list snapshot (DSH 0.2.0; no `current` field anymore). */
 export interface SessionListState {
   ids: SessionId[]
   byId: Record<SessionId, SessionSummary>
-  current: SessionId | undefined
 }
 
 /** Discriminator of a pending user interaction the host UI is presenting. */
@@ -38,12 +34,26 @@ export type PendingKind = 'approval' | 'question' | 'plan-review'
 
 /** A pending interaction projected by the host (approval / question / plan). */
 export interface PendingInteraction {
+  key: string
   kind: PendingKind | string
   sessionId: SessionId
 }
 
-/** Read-only pending-interaction feed (`sessionId → interaction`). */
-export type PendingMap = ReadonlyMap<SessionId, PendingInteraction>
+/**
+ * Unified per-session UI status carried by `useSessionStatus` (DSH 0.2.0):
+ * `SessionStatusSnapshot = ReadonlyMap<SessionId, SessionStatus>`.
+ * - running              latest known agent activity
+ * - pendingInteraction   highest-precedence domain request awaiting the user
+ * - completionUnread     a stop outside the main view not yet acknowledged
+ */
+export interface SessionStatus {
+  running: boolean | undefined
+  pendingInteraction: PendingInteraction | undefined
+  completionUnread: boolean
+}
+
+/** Read-only per-session status feed (`sessionId → status`). */
+export type SessionStatusSnapshot = ReadonlyMap<SessionId, SessionStatus>
 
 /**
  * Effective attention status of one session for Task Radar.

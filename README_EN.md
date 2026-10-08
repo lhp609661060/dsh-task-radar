@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform: DSH web](https://img.shields.io/badge/platform-DSH%20web-316fdb)](https://www.npmjs.com/package/@deepseek-ai/dsh)
-[![Requires DSH](https://img.shields.io/badge/DSH-%E2%89%A50.1.5--rc.1-2ea043)](https://www.npmjs.com/package/@deepseek-ai/dsh)
+[![Requires DSH](https://img.shields.io/badge/DSH-%E2%89%A50.2.0--rc.1-2ea043)](https://www.npmjs.com/package/@deepseek-ai/dsh)
 
 [中文](./README.md) · [Changelog](./CHANGELOG.md) · [Issues](https://github.com/lhp609661060/dsh-task-radar/issues)
 
@@ -60,13 +60,13 @@ notifications even when the browser is on another tab.
 ### Grouped message rail
 
 - ⏳ **Waiting**: tool-permission approvals, `ask_user_question` prompts, plan
-  reviews (from the host's unified pending-interaction map)
+  reviews (from `useSessionStatus.pendingInteraction`)
 - 🔵 **Running** (can be hidden in settings)
-- 🟢 **Done** (from the host completion reminder; a currently-selected session
+- 🟢 **Done** (`useSessionStatus.completionUnread`; a currently-selected session
   finishing in the background is tracked locally)
 - Each row shows the session title, project directory (cwd basename) and a relative
   timestamp
-- **Click any row to switch straight to that session**
+- **Click any row to switch straight to that session** (`uiWorkspace.openSession`)
 
 Nested subagent rows are hidden on purpose, so multi-agent teams never flood the
 rail. All preferences and the button position live only in the browser's
@@ -75,7 +75,7 @@ localStorage — **nothing is collected or uploaded**.
 ## 📦 Requirements
 
 - [DeepSeek Harness](https://www.npmjs.com/package/@deepseek-ai/dsh)
-  `@deepseek-ai/dsh` ≥ `0.1.5-rc.1`
+  `@deepseek-ai/dsh` ≥ `0.2.0-rc.1` (0.2.0 line; plugin v0.1.0 targets DSH 0.1.x)
 - The DSH **web client** (`dsh web`); desktop / CLI-only setups are not supported
 - Node.js ≥ 20 (only needed when building from source)
 
@@ -93,7 +93,7 @@ dsh plugin --profile web add github:lhp609661060/dsh-task-radar
 Pin a tag to lock a version:
 
 ```bash
-dsh plugin --profile web add github:lhp609661060/dsh-task-radar#v0.1.0
+dsh plugin --profile web add github:lhp609661060/dsh-task-radar#v0.2.0
 ```
 
 Then restart DSH or simply refresh the web page — the radar button appears
@@ -173,8 +173,8 @@ pnpm build && git add lib && git commit -m "chore: build bundles"
 | File | Responsibility |
 | --- | --- |
 | `src/index.ts` | No-op Node plugin (client-only feature; fulfils the combo entry) |
-| `src/client/index.tsx` | Registers `shell.overlay` (list / root); injects `slots`, `sessions`, `uiSession` |
-| `src/client/derive.ts` | Pure derivation: session list + pending-interaction map → status groups (unit-testable) |
+| `src/client/index.tsx` | Registers `shell.overlay` (list / root); injects `slots`, `sessions`, `uiSession`, `uiWorkspace` |
+| `src/client/derive.ts` | Pure derivation: session list + useSessionStatus snapshot → status groups (unit-testable) |
 | `src/client/notifier.ts` | Title prefix / favicon badge / WebAudio ping / Notification |
 | `src/client/App.tsx` | Edge detector, draggable proportional radar button, rail, toasts, settings |
 | `src/client/styles.ts` | Injected namespaced stylesheet; colours follow host theme variables |
@@ -182,11 +182,12 @@ pnpm build && git add lib && git commit -m "chore: build bundles"
 
 **Data sources:**
 
-- `useSessions` (`SessionListState`): run / completion state and project directory
-  of every session
-- `useSessionPendingInteraction`: unified approval / question / plan-review waiting
-  signals
-- `sessions.open(id)`: switch conversation on click
+- `useSessions` (`SessionListState`): every session and its project directory
+- `useSessionStatus` (`SessionStatusSnapshot`): per-session `running` /
+  `pendingInteraction` (unified approval / question / plan-review waiting signals) /
+  `completionUnread`
+- Current session id: the host's persisted selection (localStorage `dsh.sessions.current`)
+- `uiWorkspace.openSession(id)`: switch conversation on click
 
 ## 📄 License
 
